@@ -46,6 +46,7 @@ st.markdown("""
         line-height: 1.5;
     }
 
+    /* Metric Cards */
     .metric-card {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
@@ -95,17 +96,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Method Selector
+# Clean, Short Method Names
 crawling_methods = [
-    "🤖 Universal Dynamic Extractor (Crawl4AI — for JavaScript SPAs & Dynamic Sites)",
-    "⚡ Fast Static HTTP Extractor (curl_cffi — for Static HTML, Articles, Blogs)",
-    "🕸️ Recursive Deep Crawler (curl_cffi — crawls internal subpages across domain)",
-    "🗺️ Sitemap-First XML Ingestion (curl_cffi — harvests canonical URLs)",
-    "📡 Network API Sniffer (Crawl4AI — captures background JSON endpoints)",
+    "🤖 Universal Dynamic Extractor",
+    "⚡ Fast Static Extractor",
+    "🕸️ Recursive Deep Crawler",
+    "🗺️ Sitemap XML Ingestion",
+    "📡 Network API Sniffer",
 ]
 
 selected_method = st.selectbox(
-    "Select Crawling Method from List:",
+    "Select Crawling Method:",
     crawling_methods,
     index=0,
 )
