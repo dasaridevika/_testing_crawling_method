@@ -73,11 +73,11 @@ class DOMTextDensityExtractor:
         for k, v in replacements.items():
             text = text.replace(k, v)
 
-        # 1. Strip Wikipedia/academic citation footnotes: [ 1 ], [ a ], [ 120 ], [ citation needed ]
+        # Strip Wikipedia/academic citation footnotes: [ 1 ], [ a ], [ 120 ], [ citation needed ]
         text = re.sub(r"\[\s*(?:\d+|[a-zA-Z]+|\b\w+\s+\w+\b)\s*\]", "", text)
         text = re.sub(r"\[\s*citation needed\s*\]", "", text, flags=re.I)
 
-        # 2. Fix awkward spacing around punctuation (e.g., "word , word" -> "word, word")
+        # Fix spacing around punctuation
         text = re.sub(r"\s+([,.;:!?])", r"\1", text)
         text = re.sub(r"\(\s+", "(", text)
         text = re.sub(r"\s+\)", ")", text)
@@ -95,10 +95,7 @@ class DOMTextDensityExtractor:
 
     @classmethod
     def find_main_content_root(cls, soup: BeautifulSoup) -> Tag:
-        """
-        Locates the primary content subtree in the DOM hierarchy.
-        """
-        # Wikipedia / MediaWiki specific main body container
+        """Locates the primary content subtree in the DOM hierarchy."""
         mw_content = soup.find(id="mw-content-text")
         if mw_content:
             parser_output = mw_content.find(class_="mw-parser-output")
@@ -149,9 +146,7 @@ class DOMTextDensityExtractor:
 
     @classmethod
     def extract_structured_blocks(cls, root: Tag) -> List[Tuple[str, str]]:
-        """
-        Traverses the DOM in true sequential reading order, extracting ordered blocks.
-        """
+        """Traverses the DOM in sequential reading order, extracting ordered blocks."""
         blocks: List[Tuple[str, str]] = []
         processed_elements = set()
 
@@ -174,7 +169,7 @@ class DOMTextDensityExtractor:
                 processed_elements.add(id(elem))
                 text = cls.normalize_unicode_text(elem.get_text(separator=" ", strip=True))
                 text = re.sub(r"\s+", " ", text).strip()
-                if len(text) > 15:  # Filter out trivial fragments
+                if len(text) > 15:
                     blocks.append(("quote" if tag_name == "blockquote" else "p", text))
 
             elif tag_name in ["ul", "ol"]:
@@ -219,10 +214,7 @@ class DOMTextDensityExtractor:
 
     @classmethod
     def distill_clean_content(cls, html: str, raw_markdown: str = "") -> Tuple[str, str, float]:
-        """
-        Performs full hierarchical distillation in exact document order:
-        Returns: (ordered_plain_text, ordered_markdown, density_score)
-        """
+        """Performs full hierarchical distillation in exact document order."""
         if not html:
             return "", "", 0.0
 
@@ -294,17 +286,15 @@ class DOMTextDensityExtractor:
 
 
 # =====================================================================
-# 3. ADAPTIVE HEADLESS GRAPH TRAVERSAL CRAWLER
+# 3. CRAWL4AI MULTI-PAGE PIPELINE
 # =====================================================================
 
-class AdaptiveHeadlessCrawler:
+class Crawl4AiPipeline:
     """
-    Implements Adaptive Headless Graph Traversal with DOM Text-Density Distillation (AHGT-TDD):
-    - Headless browser virtualization via Crawl4AI AsyncWebCrawler.
-    - Container-safe sandbox flags for cloud deployment (Streamlit Cloud, Docker).
-    - Dynamic DOM mutation settlement for modern client-side SPAs.
-    - Asynchronous Breadth-First Priority Queue with intra-domain URL hashing.
-    - Algorithmic noise reduction and hierarchical order preservation.
+    Pure Crawl4AI Crawling Pipeline:
+    - Uses AsyncWebCrawler for dynamic JavaScript execution and DOM settlement.
+    - Concurrently processes multiple internal subpages across any domain.
+    - Uses DOM Text-Density distillation for clean, ordered Markdown/text output.
     """
 
     @staticmethod

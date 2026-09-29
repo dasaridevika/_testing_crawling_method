@@ -1,10 +1,10 @@
 import asyncio
 import streamlit as st
 import pandas as pd
-from extractor import AdaptiveHeadlessCrawler, normalize_url
+from extractor import Crawl4AiPipeline, normalize_url
 
 st.set_page_config(
-    page_title="Adaptive Headless Web Crawler",
+    page_title="Crawl4AI Web Crawler",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -85,8 +85,8 @@ st.markdown("""
 # App Header
 st.markdown("""
 <div class="hero-container">
-    <div class="hero-title">Adaptive Headless Web Crawler</div>
-    <div class="hero-subtitle">Methodology: Adaptive Headless Graph Traversal with DOM Text-Density Distillation (AHGT-TDD). Executes dynamic JavaScript, performs asynchronous subpage traversal, and mathematically filters boilerplate noise.</div>
+    <div class="hero-title">Crawl4AI Web Crawler</div>
+    <div class="hero-subtitle">High-performance AI web crawler powered by Crawl4AI. Handles dynamic JavaScript, internal subpages, and clean content extraction.</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -111,9 +111,9 @@ if submitted:
     if not clean_url:
         st.error("Please enter a valid website URL.")
     else:
-        with st.spinner(f"Crawling {clean_url} via AHGT-TDD pipeline (up to {max_pages} pages)..."):
+        with st.spinner(f"Crawling {clean_url} with Crawl4AI (up to {max_pages} pages)..."):
             result = asyncio.run(
-                AdaptiveHeadlessCrawler.crawl_website(
+                Crawl4AiPipeline.crawl_website(
                     start_url=clean_url,
                     max_pages=max_pages,
                     max_depth=2,
@@ -193,7 +193,7 @@ if "crawl_results" in st.session_state:
             st.download_button(
                 "Download All Crawled Pages (.txt)",
                 data=combined_text,
-                file_name="crawled_pages_content.txt",
+                file_name="crawl4ai_results.txt",
                 mime="text/plain",
                 use_container_width=True,
             )
