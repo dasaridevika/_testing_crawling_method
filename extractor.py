@@ -47,22 +47,22 @@ def normalize_url(url: str) -> str:
 class DOMTextDensityExtractor:
     """
     Advanced Order-Preserving DOM Distillation:
-    - Normalizes Unicode punctuation (smart quotes, em-dashes, non-breaking spaces).
-    - Identifies main content root (<main>, <article>, or max-density container).
-    - Eliminates boilerplate elements (cookie notices, navbars, sidebars, footers, ads).
-    - Traverses DOM in topological reading order (pre-order depth traversal).
+    - Normalizes Unicode punctuation and standardizes spacing around punctuation.
+    - Strips citation footnotes (e.g. [1], [a], [citation needed]).
+    - Filters out navigation sidebars, infoboxes, hatnotes, and reference dumps.
     - Preserves semantic hierarchy (Headings, Paragraphs, Lists, Tables).
     """
 
     NOISE_TAGS = {"script", "style", "noscript", "svg", "iframe", "canvas", "nav", "footer", "header", "aside", "form"}
+    
     NOISE_PATTERNS = re.compile(
-        r"cookie|banner|modal|popup|sidebar|widget|comment|footer|nav|breadcrumb|social|share|advertisement|ad-container|newsletter|subscription",
+        r"cookie|banner|modal|popup|sidebar|widget|comment|footer|nav|breadcrumb|social|share|advertisement|ad-container|newsletter|subscription|infobox|hatnote|navbox|mw-jump-link|mw-editsection|toc|reflist|mw-references-wrap",
         re.I
     )
 
     @staticmethod
     def normalize_unicode_text(text: str) -> str:
-        """Cleans and standardizes Unicode characters and punctuation."""
+        """Cleans and standardizes Unicode characters, punctuation, and footnotes."""
         if not text:
             return ""
         replacements = {
@@ -72,6 +72,16 @@ class DOMTextDensityExtractor:
         }
         for k, v in replacements.items():
             text = text.replace(k, v)
+
+        # 1. Strip Wikipedia/academic citation footnotes: [ 1 ], [ a ], [ 120 ], [ citation needed ]
+        text = re.sub(r"\[\s*(?:\d+|[a-zA-Z]+|\b\w+\s+\w+\b)\s*\]", "", text)
+        text = re.sub(r"\[\s*citation needed\s*\]", "", text, flags=re.I)
+
+        # 2. Fix awkward spacing around punctuation (e.g., "word , word" -> "word, word")
+        text = re.sub(r"\s+([,.;:!?])", r"\1", text)
+        text = re.sub(r"\(\s+", "(", text)
+        text = re.sub(r"\s+\)", ")", text)
+
         return text
 
     @classmethod
@@ -86,10 +96,16 @@ class DOMTextDensityExtractor:
     @classmethod
     def find_main_content_root(cls, soup: BeautifulSoup) -> Tag:
         """
-        Locates the primary content subtree in the DOM hierarchy:
-        1. Checks explicit semantic containers: <main>, <article>, [role="main"].
-        2. Falls back to scoring <div> / <section> containers by (text_length * density).
+        Locates the primary content subtree in the DOM hierarchy.
         """
+        # Wikipedia / MediaWiki specific main body container
+        mw_content = soup.find(id="mw-content-text")
+        if mw_content:
+            parser_output = mw_content.find(class_="mw-parser-output")
+            if parser_output:
+                return parser_output
+            return mw_content
+
         for semantic_tag in ["main", "article"]:
             found = soup.find(semantic_tag)
             if found and len(found.get_text(strip=True)) > 150:
@@ -118,7 +134,7 @@ class DOMTextDensityExtractor:
 
     @classmethod
     def clean_noise_elements(cls, root: Tag):
-        """Removes script, style, ads, and noise containers from the subtree."""
+        """Removes script, style, ads, infoboxes, sidebars, and noise containers."""
         for tag in root.find_all(list(cls.NOISE_TAGS)):
             tag.decompose()
 
@@ -129,8 +145,7 @@ class DOMTextDensityExtractor:
             element_id = str(tag.get("id", ""))
             
             if cls.NOISE_PATTERNS.search(classes) or cls.NOISE_PATTERNS.search(element_id):
-                if len(tag.get_text(strip=True)) < 400:
-                    tag.decompose()
+                tag.decompose()
 
     @classmethod
     def extract_structured_blocks(cls, root: Tag) -> List[Tuple[str, str]]:
@@ -159,7 +174,7 @@ class DOMTextDensityExtractor:
                 processed_elements.add(id(elem))
                 text = cls.normalize_unicode_text(elem.get_text(separator=" ", strip=True))
                 text = re.sub(r"\s+", " ", text).strip()
-                if len(text) > 3:
+                if len(text) > 15:  # Filter out trivial fragments
                     blocks.append(("quote" if tag_name == "blockquote" else "p", text))
 
             elif tag_name in ["ul", "ol"]:
@@ -170,7 +185,7 @@ class DOMTextDensityExtractor:
                 for li in elem.find_all("li", recursive=False):
                     li_text = cls.normalize_unicode_text(li.get_text(separator=" ", strip=True))
                     li_text = re.sub(r"\s+", " ", li_text).strip()
-                    if li_text:
+                    if li_text and not li_text.startswith("Jump up to:"):
                         items.append(li_text)
                 if items:
                     blocks.append(("list", "\n".join(f"- {it}" for it in items)))
@@ -197,7 +212,7 @@ class DOMTextDensityExtractor:
                     processed_elements.add(id(elem))
                     text = cls.normalize_unicode_text(elem.get_text(separator=" ", strip=True))
                     text = re.sub(r"\s+", " ", text).strip()
-                    if len(text) > 10:
+                    if len(text) > 20:
                         blocks.append(("p", text))
 
         return blocks
