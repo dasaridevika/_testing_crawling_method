@@ -1,10 +1,10 @@
 import asyncio
 import streamlit as st
 import pandas as pd
-from extractor import Crawl4AiPipeline, normalize_url
+from extractor import AdaptiveHeadlessCrawler, normalize_url
 
 st.set_page_config(
-    page_title="Crawl4AI Web Crawler",
+    page_title="Adaptive Headless Web Crawler",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -35,7 +35,7 @@ st.markdown("""
         margin-bottom: 0.35rem;
     }
     .hero-subtitle {
-        font-size: 1rem;
+        font-size: 0.98rem;
         color: #64748b;
         line-height: 1.5;
     }
@@ -85,19 +85,19 @@ st.markdown("""
 # App Header
 st.markdown("""
 <div class="hero-container">
-    <div class="hero-title">Crawl4AI Web Crawler</div>
-    <div class="hero-subtitle">High-performance AI crawler powered exclusively by Crawl4AI. Handles dynamic JavaScript, internal subpages, and clean content extraction.</div>
+    <div class="hero-title">Adaptive Headless Web Crawler</div>
+    <div class="hero-subtitle">Methodology: Adaptive Headless Graph Traversal with DOM Text-Density Distillation (AHGT-TDD). Executes dynamic JavaScript, performs asynchronous subpage traversal, and mathematically filters boilerplate noise.</div>
 </div>
 """, unsafe_allow_html=True)
 
 # Form Input
-with st.form("crawl4ai_form"):
+with st.form("crawler_form"):
     col_url, col_pages, col_btn = st.columns([5, 2, 1.5])
     with col_url:
         target_url = st.text_input(
             "Website URL",
             value="",
-            placeholder="Enter starting website URL (e.g. https://example.com)",
+            placeholder="Enter target URL (e.g. https://example.com)",
             label_visibility="collapsed",
         )
     with col_pages:
@@ -111,9 +111,9 @@ if submitted:
     if not clean_url:
         st.error("Please enter a valid website URL.")
     else:
-        with st.spinner(f"Crawling with Crawl4AI from {clean_url} (up to {max_pages} pages)..."):
+        with st.spinner(f"Crawling {clean_url} via AHGT-TDD pipeline (up to {max_pages} pages)..."):
             result = asyncio.run(
-                Crawl4AiPipeline.crawl_website(
+                AdaptiveHeadlessCrawler.crawl_website(
                     start_url=clean_url,
                     max_pages=max_pages,
                     max_depth=2,
@@ -149,7 +149,7 @@ if "crawl_results" in st.session_state:
             st.markdown(f"""
             <div class="metric-card">
                 <div class="metric-val">{res_data.get('elapsed_ms', 0)} ms</div>
-                <div class="metric-lbl">Total Time</div>
+                <div class="metric-lbl">Total Latency</div>
             </div>
             """, unsafe_allow_html=True)
         with m3:
@@ -172,7 +172,13 @@ if "crawl_results" in st.session_state:
         # Summary Table
         st.subheader("Crawled Subpages Summary")
         df_summary = pd.DataFrame([
-            {"Title": p["Title"], "Words": p["Word Count"], "Depth": p["Depth"], "URL": p["URL"]}
+            {
+                "Title": p["Title"],
+                "Words": p["Word Count"],
+                "Text Density": p.get("Text Density", "N/A"),
+                "Depth": p["Depth"],
+                "URL": p["URL"]
+            }
             for p in pages
         ])
         st.dataframe(df_summary, use_container_width=True)
@@ -181,13 +187,13 @@ if "crawl_results" in st.session_state:
         col_d1, col_d2 = st.columns([1, 1])
         with col_d1:
             combined_text = "\n\n" + "=" * 60 + "\n\n".join([
-                f"PAGE: {p['Title']}\nURL: {p['URL']}\nWORD COUNT: {p['Word Count']}\n\n{p['Full Text']}"
+                f"PAGE: {p['Title']}\nURL: {p['URL']}\nTEXT DENSITY: {p.get('Text Density', 'N/A')}\nWORD COUNT: {p['Word Count']}\n\n{p['Full Text']}"
                 for p in pages
             ])
             st.download_button(
                 "Download All Crawled Pages (.txt)",
                 data=combined_text,
-                file_name="crawl4ai_results.txt",
+                file_name="crawled_pages_content.txt",
                 mime="text/plain",
                 use_container_width=True,
             )
@@ -210,7 +216,7 @@ if "crawl_results" in st.session_state:
 
         active_page = pages[selected_page_idx]
 
-        t1, t2 = st.tabs(["Clean Text", "Document View"])
+        t1, t2 = st.tabs(["Clean Plain Text", "Markdown Document"])
         with t1:
             st.text_area(
                 f"Clean Text for: {active_page['Title']}",
