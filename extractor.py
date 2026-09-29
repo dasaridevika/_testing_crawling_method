@@ -1,8 +1,9 @@
 import re
 import time
+import json
 import asyncio
-from typing import Dict, Any, List, Optional
-from urllib.parse import urljoin
+from typing import Dict, Any, List, Optional, Set
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from curl_cffi import requests as curl_requests
@@ -57,148 +58,115 @@ def sanitize_markdown_doc(text: str) -> str:
 
 
 # ==========================================
-# SMART AUTO-ADAPTIVE UNIVERSAL EXTRACTOR
+# MULTI-PAGE DYNAMIC CRAWLER (CRAWL4AI CONCURRENT)
 # ==========================================
 
-class SmartUniversalExtractor:
+class MultiPageDynamicCrawler:
     """
-    Intelligent Adaptive Extraction Pipeline:
-    1. Tier 1 (Speed): Attempts ultra-fast HTTP request via curl_cffi with Chrome 124 TLS spoofing.
-    2. Tier 2 (Dynamic SPA): If Tier 1 detects sparse content or client-side JavaScript,
-       it automatically promotes the request to Crawl4AI headless browser.
+    High-Performance Dynamic Multi-Page Crawler:
+    - Traverses multi-page websites using persistent headless browser session.
+    - Executes JavaScript across child pages with concurrent worker tabs.
+    - Discovers internal domain links and extracts clean text without HTML/Markdown clutter.
     """
 
     @staticmethod
-    async def extract_auto(url: str) -> Dict[str, Any]:
-        target_url = normalize_url(url)
+    async def crawl_site(
+        start_url: str,
+        max_pages: int = 5,
+        max_depth: int = 2,
+        concurrency: int = 3,
+    ) -> Dict[str, Any]:
+        target_start = normalize_url(start_url)
         start_time = time.perf_counter()
 
-        # Step 1: Ultra-Fast TLS HTTP Attempt (curl_cffi)
-        try:
-            headers = {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            }
-            resp = curl_requests.get(
-                target_url,
-                impersonate="chrome124",
-                headers=headers,
-                timeout=8,
-                allow_redirects=True,
-            )
+        parsed_start = urlparse(target_start)
+        base_domain = parsed_start.netloc
 
-            if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, "html.parser")
-                for t in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer", "header"]):
-                    t.decompose()
+        visited: Set[str] = set()
+        queue: List[tuple] = [(target_start, 0)]  # (url, depth)
+        crawled_results: List[Dict[str, Any]] = []
 
-                title = soup.title.string.strip() if soup.title and soup.title.string else ""
-                txt = trafilatura.extract(resp.text, output_format="txt") or soup.get_text(separator="\n", strip=True)
-                pure_text = sanitize_pure_text(txt)
+        browser_cfg = BrowserConfig(
+            headless=True,
+            verbose=False,
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        )
+        run_cfg = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            page_timeout=25000,
+            wait_until="domcontentloaded",
+            delay_before_return_html=1.5,
+        )
 
-                # If Tier 1 retrieved rich text (>250 characters), return immediately in sub-second time
-                if len(pure_text) >= 250:
-                    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
-                    md_txt = trafilatura.extract(resp.text, output_format="markdown") or txt
-                    formatted_doc = sanitize_markdown_doc(md_txt)
+        semaphore = asyncio.Semaphore(concurrency)
 
-                    links = []
-                    for a in soup.find_all("a", href=True):
-                        abs_url = urljoin(target_url, a["href"].strip())
-                        text = a.get_text(strip=True)
-                        if abs_url.startswith(("http://", "https://")) and len(text) > 1:
-                            links.append({"Title": text[:80], "URL": abs_url})
+        async with AsyncWebCrawler(config=browser_cfg) as crawler:
 
-                    seen = set()
-                    deduped_links = []
-                    for l in links:
-                        if l["URL"] not in seen:
-                            seen.add(l["URL"])
-                            deduped_links.append(l)
+            async def process_url(current_url: str, depth: int):
+                nonlocal queue, visited, crawled_results
+                async with semaphore:
+                    if len(crawled_results) >= max_pages:
+                        return
+                    try:
+                        res = await crawler.arun(url=current_url, config=run_cfg)
+                        if not res.success:
+                            return
 
-                    return {
-                        "success": True,
-                        "url": resp.url,
-                        "title": title,
-                        "strategy": "Fast HTTP (Sub-Second)",
-                        "elapsed_ms": elapsed_ms,
-                        "pure_text": pure_text,
-                        "formatted_doc": formatted_doc,
-                        "links": deduped_links,
-                        "error": None,
-                    }
-        except Exception:
-            pass  # Automatically escalate to Tier 2 (Crawl4AI)
+                        raw_md = res.markdown.raw_markdown if hasattr(res.markdown, "raw_markdown") else str(res.markdown or "")
+                        soup = BeautifulSoup(res.html or "", "html.parser")
+                        title = soup.title.string.strip() if soup.title and soup.title.string else current_url
 
-        # Step 2: Dynamic Browser Execution (Crawl4AI for SPAs & heavy JavaScript)
-        try:
-            browser_cfg = BrowserConfig(
-                headless=True,
-                verbose=False,
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            )
-            run_cfg = CrawlerRunConfig(
-                cache_mode=CacheMode.BYPASS,
-                page_timeout=30000,
-                wait_until="domcontentloaded",
-                delay_before_return_html=2.0,
-            )
-            async with AsyncWebCrawler(config=browser_cfg) as crawler:
-                res = await crawler.arun(url=target_url, config=run_cfg)
-                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+                        pure_text = sanitize_pure_text(raw_md)
+                        if len(pure_text) < 80 and soup.body:
+                            for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer", "header"]):
+                                tag.decompose()
+                            pure_text = sanitize_pure_text(soup.body.get_text(separator="\n", strip=True))
 
-                if not res.success:
-                    return {
-                        "success": False,
-                        "url": target_url,
-                        "strategy": "Dynamic Browser",
-                        "elapsed_ms": elapsed_ms,
-                        "error": res.error_message or "Extraction failed",
-                    }
+                        crawled_results.append({
+                            "URL": current_url,
+                            "Title": title,
+                            "Depth": depth,
+                            "Word Count": len(pure_text.split()),
+                            "Full Text": pure_text,
+                            "Markdown": sanitize_markdown_doc(raw_md),
+                        })
 
-                raw_md = res.markdown.raw_markdown if hasattr(res.markdown, "raw_markdown") else str(res.markdown or "")
-                soup = BeautifulSoup(res.html or "", "html.parser")
-                title = soup.title.string.strip() if soup.title and soup.title.string else ""
+                        # Collect child internal links if depth permits
+                        if depth < max_depth and len(crawled_results) < max_pages:
+                            for a in soup.find_all("a", href=True):
+                                child_url = urljoin(current_url, a["href"].strip())
+                                child_parsed = urlparse(child_url)
 
-                pure_text = sanitize_pure_text(raw_md)
-                if len(pure_text) < 80 and soup.body:
-                    for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer", "header"]):
-                        tag.decompose()
-                    pure_text = sanitize_pure_text(soup.body.get_text(separator="\n", strip=True))
+                                if child_parsed.netloc == base_domain and child_url.startswith(("http://", "https://")):
+                                    # Normalize child url (strip query params / fragments for clean deduplication)
+                                    clean_child = child_url.split("#")[0]
+                                    if clean_child not in visited:
+                                        visited.add(clean_child)
+                                        queue.append((clean_child, depth + 1))
+                    except Exception:
+                        pass
 
-                formatted_doc = sanitize_markdown_doc(raw_md) if len(raw_md) > 50 else pure_text
+            # Initial seed
+            visited.add(target_start)
 
-                links = []
-                for a in soup.find_all("a", href=True):
-                    abs_url = urljoin(target_url, a["href"].strip())
-                    text = a.get_text(strip=True)
-                    if abs_url.startswith(("http://", "https://")) and len(text) > 1:
-                        links.append({"Title": text[:80], "URL": abs_url})
+            while queue and len(crawled_results) < max_pages:
+                # Take batch of URLs up to concurrency limit
+                batch = []
+                while queue and len(batch) < concurrency and (len(crawled_results) + len(batch)) < max_pages:
+                    batch.append(queue.pop(0))
 
-                seen = set()
-                deduped_links = []
-                for l in links:
-                    if l["URL"] not in seen:
-                        seen.add(l["URL"])
-                        deduped_links.append(l)
+                if not batch:
+                    break
 
-                return {
-                    "success": True,
-                    "url": target_url,
-                    "title": title,
-                    "strategy": "Dynamic Browser (JavaScript Rendered)",
-                    "elapsed_ms": elapsed_ms,
-                    "pure_text": pure_text,
-                    "formatted_doc": formatted_doc,
-                    "links": deduped_links,
-                    "error": None,
-                }
-        except Exception as err:
-            return {
-                "success": False,
-                "url": target_url,
-                "strategy": "Auto-Adaptive",
-                "elapsed_ms": round((time.perf_counter() - start_time) * 1000, 1),
-                "error": str(err),
-            }
+                tasks = [process_url(u, d) for u, d in batch]
+                await asyncio.gather(*tasks)
+
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
+
+        return {
+            "success": len(crawled_results) > 0,
+            "start_url": target_start,
+            "total_pages_crawled": len(crawled_results),
+            "elapsed_ms": elapsed_ms,
+            "pages": crawled_results,
+        }
