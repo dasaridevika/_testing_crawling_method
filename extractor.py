@@ -1,11 +1,29 @@
+import os
 import re
+import sys
 import time
 import asyncio
+import subprocess
 from typing import Dict, Any, List, Set, Tuple
 from urllib.parse import urljoin, urlparse
-from bs4 import BeautifulSoup, Tag, NavigableString
+from bs4 import BeautifulSoup, Tag
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+
+
+# =====================================================================
+# 0. AUTOMATIC BROWSER DEPENDENCY RESOLUTION (STREAMLIT CLOUD / LINUX)
+# =====================================================================
+
+def ensure_playwright_installed():
+    """Ensures Chromium binaries are installed in container environments."""
+    try:
+        if os.name != "nt":  # Linux / Cloud environments
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=False)
+    except Exception:
+        pass
+
+ensure_playwright_installed()
 
 
 # =====================================================================
@@ -116,6 +134,7 @@ class AdaptiveHeadlessCrawler:
     """
     Implements Adaptive Headless Graph Traversal with DOM Text-Density Distillation (AHGT-TDD):
     - Stealth browser virtualization via DevTools protocol context.
+    - Container-safe sandbox flags for cloud deployment (Streamlit Cloud, Docker).
     - Dynamic DOM mutation settlement for modern client-side SPAs.
     - Asynchronous Breadth-First Priority Queue with intra-domain URL hashing.
     - Algorithmic noise reduction and content extraction.
@@ -138,11 +157,20 @@ class AdaptiveHeadlessCrawler:
         queue: List[Tuple[str, int]] = [(target_start, 0)]  # (url, depth)
         crawled_results: List[Dict[str, Any]] = []
 
-        # Stealth browser virtualization config
+        # Stealth browser virtualization config with Linux container safety flags
         browser_cfg = BrowserConfig(
             headless=True,
             verbose=False,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            extra_args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-first-run",
+                "--no-zygote",
+                "--single-process",
+            ]
         )
 
         # Dynamic settlement run config
