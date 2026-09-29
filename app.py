@@ -1,10 +1,10 @@
 import asyncio
 import streamlit as st
 import pandas as pd
-from extractor import MultiPageDynamicCrawler, normalize_url
+from extractor import Crawl4AiPipeline, normalize_url
 
 st.set_page_config(
-    page_title="Dynamic Multi-Page Web Crawler",
+    page_title="Crawl4AI Web Crawler",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -85,13 +85,13 @@ st.markdown("""
 # App Header
 st.markdown("""
 <div class="hero-container">
-    <div class="hero-title">Dynamic Multi-Page Web Crawler</div>
-    <div class="hero-subtitle">Concurrent stealth browser engine designed to crawl dynamic JavaScript websites, traverse internal subpages, and extract clean text.</div>
+    <div class="hero-title">Crawl4AI Web Crawler</div>
+    <div class="hero-subtitle">High-performance AI crawler powered exclusively by Crawl4AI. Handles dynamic JavaScript, internal subpages, and clean content extraction.</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Main Form
-with st.form("multipage_crawler_form"):
+# Form Input
+with st.form("crawl4ai_form"):
     col_url, col_pages, col_btn = st.columns([5, 2, 1.5])
     with col_url:
         target_url = st.text_input(
@@ -101,7 +101,7 @@ with st.form("multipage_crawler_form"):
             label_visibility="collapsed",
         )
     with col_pages:
-        max_pages = st.slider("Max Pages to Crawl", min_value=2, max_value=20, value=5)
+        max_pages = st.slider("Max Pages to Crawl", min_value=1, max_value=20, value=5)
     with col_btn:
         submitted = st.form_submit_button("Start Crawl", type="primary", use_container_width=True)
 
@@ -111,9 +111,9 @@ if submitted:
     if not clean_url:
         st.error("Please enter a valid website URL.")
     else:
-        with st.spinner(f"Crawling dynamic pages from {clean_url} (up to {max_pages} pages)..."):
+        with st.spinner(f"Crawling with Crawl4AI from {clean_url} (up to {max_pages} pages)..."):
             result = asyncio.run(
-                MultiPageDynamicCrawler.crawl_site(
+                Crawl4AiPipeline.crawl_website(
                     start_url=clean_url,
                     max_pages=max_pages,
                     max_depth=2,
@@ -123,7 +123,7 @@ if submitted:
 
         st.session_state["crawl_results"] = result
 
-# Result Rendering
+# Results View
 if "crawl_results" in st.session_state:
     res_data = st.session_state["crawl_results"]
     pages = res_data.get("pages", [])
@@ -187,7 +187,7 @@ if "crawl_results" in st.session_state:
             st.download_button(
                 "Download All Crawled Pages (.txt)",
                 data=combined_text,
-                file_name="multipage_crawl_results.txt",
+                file_name="crawl4ai_results.txt",
                 mime="text/plain",
                 use_container_width=True,
             )
@@ -203,7 +203,7 @@ if "crawl_results" in st.session_state:
 
         st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
-        # Individual Page Viewer
+        # Individual Page Content Viewer
         st.subheader("Individual Page Content Viewer")
         page_titles = [f"{idx+1}. {p['Title']} ({p['Word Count']} words)" for idx, p in enumerate(pages)]
         selected_page_idx = st.selectbox("Select Page to View:", range(len(pages)), format_func=lambda i: page_titles[i])

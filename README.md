@@ -1,21 +1,16 @@
-# Universal Web Crawling & Data Extraction Suite
+# Crawl4AI Web Crawler & Content Extractor
 
-An advanced, anti-bot resilient web crawling and data extraction system featuring a modern Streamlit interface. It decouples extraction into two specialized engines:
-
-1. **Crawl4AI Engine**: Stealth headless browser automation powered by Playwright to execute JavaScript bundles, settle dynamic DOM trees (SPAs like React/Vue/Angular), and sniff background JSON APIs.
-2. **curl_cffi Engine**: Ultra-fast pure HTTP client that impersonates real browser TLS JA3/JA4 cryptographic fingerprints (Chrome 124) to bypass anti-bot firewalls with zero browser overhead.
+A web crawler and extraction pipeline powered exclusively by **Crawl4AI**. Designed to crawl multi-page websites, execute client-side JavaScript (SPAs like React/Vue/Angular), traverse internal subpages concurrently, and extract clean text without HTML/Markdown artifacts.
 
 ---
 
 ## 🚀 Features
 
-- **Pristine Text Extraction**: Sanitizes DOM and Markdown to strip 100% of raw HTML tags and Markdown syntax (`**`, `#`, `[]()`), leaving clean human-readable text.
-- **Universal Dynamic Extractor (`Crawl4AI`)**: Extracts dynamic Single-Page Applications (SPAs) with automatic DOM settlement.
-- **Fast Static HTTP Extractor (`curl_cffi`)**: Sub-second extraction for static articles, Wikipedia, and blogs.
-- **Recursive Deep Crawler**: Breadth-First Search (BFS) graph traversal across internal subpages with regex path filtering.
-- **Sitemap-First XML Ingestion**: Parses `sitemap.xml` directly to discover and harvest canonical URLs in parallel.
-- **Background API Sniffer**: Intercepts background XHR/Fetch JSON API responses from dynamic SPAs in real-time.
-- **Multi-Format Export**: 1-click downloads for `.txt`, `.md`, `.csv`, and `.json`.
+- **Pure Crawl4AI Architecture**: Employs `AsyncWebCrawler` with anti-detection browser automation and dynamic DOM settlement.
+- **Dynamic Multi-Page Crawling**: Traverses internal domain links up to configurable depths and page limits.
+- **Concurrent Execution**: Spawns concurrent browser tabs to process multiple subpages in parallel.
+- **Pristine Output**: 100% clean text stripped of all raw HTML tags and Markdown formatting symbols.
+- **Bulk & Individual Exports**: 1-click download for all pages combined into `.txt`, `.csv` page indices, or individual page views.
 
 ---
 
@@ -38,15 +33,3 @@ An advanced, anti-bot resilient web crawling and data extraction system featurin
    streamlit run app.py
    ```
    Open `http://localhost:8501` in your browser.
-
----
-
-## 📂 Project Structure
-
-```
-├── app.py             # Streamlit web dashboard
-├── extractor.py       # Core crawling engines (Crawl4AiEngine & CurlCffiEngine)
-├── requirements.txt   # Dependencies
-├── .gitignore         # Ignored cache files
-└── README.md          # Project documentation
-```

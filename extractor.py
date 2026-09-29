@@ -1,19 +1,15 @@
 import re
 import time
-import json
 import asyncio
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, Any, List, Set
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
-
-from curl_cffi import requests as curl_requests
-import trafilatura
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 
 
 # ==========================================
-# TEXT SANITIZATION & NORMALIZATION UTILS
+# TEXT SANITIZATION UTILITIES
 # ==========================================
 
 def normalize_url(url: str) -> str:
@@ -58,19 +54,18 @@ def sanitize_markdown_doc(text: str) -> str:
 
 
 # ==========================================
-# MULTI-PAGE DYNAMIC CRAWLER (CRAWL4AI CONCURRENT)
+# PURE CRAWL4AI MULTI-PAGE ENGINE
 # ==========================================
 
-class MultiPageDynamicCrawler:
+class Crawl4AiPipeline:
     """
-    High-Performance Dynamic Multi-Page Crawler:
-    - Traverses multi-page websites using persistent headless browser session.
-    - Executes JavaScript across child pages with concurrent worker tabs.
-    - Discovers internal domain links and extracts clean text without HTML/Markdown clutter.
+    100% Crawl4AI Crawling Pipeline:
+    - Uses AsyncWebCrawler for dynamic JavaScript execution and DOM settlement.
+    - Concurrently processes multiple internal subpages across any domain.
     """
 
     @staticmethod
-    async def crawl_site(
+    async def crawl_website(
         start_url: str,
         max_pages: int = 5,
         max_depth: int = 2,
@@ -93,7 +88,7 @@ class MultiPageDynamicCrawler:
         )
         run_cfg = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
-            page_timeout=25000,
+            page_timeout=30000,
             wait_until="domcontentloaded",
             delay_before_return_html=1.5,
         )
@@ -131,14 +126,12 @@ class MultiPageDynamicCrawler:
                             "Markdown": sanitize_markdown_doc(raw_md),
                         })
 
-                        # Collect child internal links if depth permits
                         if depth < max_depth and len(crawled_results) < max_pages:
                             for a in soup.find_all("a", href=True):
                                 child_url = urljoin(current_url, a["href"].strip())
                                 child_parsed = urlparse(child_url)
 
                                 if child_parsed.netloc == base_domain and child_url.startswith(("http://", "https://")):
-                                    # Normalize child url (strip query params / fragments for clean deduplication)
                                     clean_child = child_url.split("#")[0]
                                     if clean_child not in visited:
                                         visited.add(clean_child)
@@ -146,11 +139,9 @@ class MultiPageDynamicCrawler:
                     except Exception:
                         pass
 
-            # Initial seed
             visited.add(target_start)
 
             while queue and len(crawled_results) < max_pages:
-                # Take batch of URLs up to concurrency limit
                 batch = []
                 while queue and len(batch) < concurrency and (len(crawled_results) + len(batch)) < max_pages:
                     batch.append(queue.pop(0))
