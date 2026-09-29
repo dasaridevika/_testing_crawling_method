@@ -10,7 +10,6 @@ from extractor import (
 
 st.set_page_config(
     page_title="Universal Web Crawler",
-    page_icon="🕸️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -80,29 +79,29 @@ st.markdown("""
         padding: 8px 16px;
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        color: #4f46e5;
-        background-color: #eef2ff;
+        color: #2563eb;
+        background-color: #eff6ff;
     }
 
     #MainMenu, footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# App Header
+# App Header (Emoji-free)
 st.markdown("""
 <div class="hero-container">
-    <div class="hero-title">🕸️ Universal Web Crawler</div>
+    <div class="hero-title">Universal Web Crawler</div>
     <div class="hero-subtitle">Select a crawling method and enter any target URL to extract clean data.</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Clean, Short Method Names
+# Clean, Professional Method Names (No emojis)
 crawling_methods = [
-    "🤖 Universal Dynamic Extractor",
-    "⚡ Fast Static Extractor",
-    "🕸️ Recursive Deep Crawler",
-    "🗺️ Sitemap XML Ingestion",
-    "📡 Network API Sniffer",
+    "Universal Dynamic Extractor",
+    "Fast Static Extractor",
+    "Recursive Deep Crawler",
+    "Sitemap XML Ingestion",
+    "Network API Sniffer",
 ]
 
 selected_method = st.selectbox(
@@ -128,7 +127,7 @@ with st.form("crawler_execution_form"):
     elif "Sitemap" in selected_method:
         max_sitemap_urls = st.slider("Max Sitemap URLs to Harvest", 2, 20, 5)
 
-    submitted = st.form_submit_button("🚀 Run Extraction", type="primary", use_container_width=True)
+    submitted = st.form_submit_button("Run Extraction", type="primary", use_container_width=True)
 
 # Execution Pipeline
 if submitted:
@@ -164,7 +163,7 @@ if "executed_result" in st.session_state:
     # 1. Single Page Extraction Results
     if "Universal Dynamic" in res_method or "Fast Static" in res_method:
         if not res_data.get("success"):
-            st.error(f"❌ Extraction failed: {res_data.get('error')}")
+            st.error(f"Extraction failed: {res_data.get('error')}")
         else:
             pure_text = res_data.get("pure_text", "")
             formatted_doc = res_data.get("formatted_doc", "")
@@ -178,20 +177,20 @@ if "executed_result" in st.session_state:
             with m4: st.markdown(f'<div class="metric-card"><div class="metric-val">{len(links)}</div><div class="metric-lbl">Links Found</div></div>', unsafe_allow_html=True)
 
             if res_data.get("title"):
-                st.subheader(f"📄 {res_data['title']}")
+                st.subheader(res_data["title"])
 
-            t1, t2, t3 = st.tabs(["📝 Pure Clean Text", "📖 Formatted Document", "🔗 Discovered Links"])
+            t1, t2, t3 = st.tabs(["Clean Text", "Document View", "Discovered Links"])
             with t1:
-                st.download_button("⬇️ Download Pure Text (.txt)", data=pure_text, file_name="clean_text.txt", mime="text/plain")
-                st.text_area("Pure Clean Text (Zero HTML tags, zero markdown symbols)", pure_text, height=480, label_visibility="collapsed")
+                st.download_button("Download Text (.txt)", data=pure_text, file_name="clean_text.txt", mime="text/plain")
+                st.text_area("Clean Text (Zero HTML tags, zero markdown symbols)", pure_text, height=480, label_visibility="collapsed")
             with t2:
-                st.download_button("⬇️ Download Markdown (.md)", data=formatted_doc, file_name="document.md", mime="text/markdown")
+                st.download_button("Download Markdown (.md)", data=formatted_doc, file_name="document.md", mime="text/markdown")
                 st.markdown(formatted_doc)
             with t3:
                 if links:
                     df = pd.DataFrame(links)
                     st.dataframe(df, use_container_width=True)
-                    st.download_button("⬇️ Export Links as CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="links.csv", mime="text/csv")
+                    st.download_button("Export Links as CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="links.csv", mime="text/csv")
 
     # 2. Recursive Deep Crawler Results
     elif "Recursive Deep" in res_method:
@@ -204,7 +203,7 @@ if "executed_result" in st.session_state:
             df_p = pd.DataFrame([{"Title": p["Title"], "Depth": p["Depth"], "Words": p["Word Count"], "URL": p["URL"]} for p in pages])
             st.dataframe(df_p, use_container_width=True)
             combined = "\n\n" + "="*50 + "\n\n".join([f"PAGE: {p['Title']}\nURL: {p['URL']}\n\n{p['Full Text']}" for p in pages])
-            st.download_button("⬇️ Download All Pages (.txt)", data=combined, file_name="recursive_crawl.txt", mime="text/plain")
+            st.download_button("Download All Pages (.txt)", data=combined, file_name="recursive_crawl.txt", mime="text/plain")
 
     # 3. Sitemap Ingestion Results
     elif "Sitemap" in res_method:
@@ -217,7 +216,7 @@ if "executed_result" in st.session_state:
             df_sm = pd.DataFrame([{"Title": p["Title"], "Words": p["Word Count"], "URL": p["URL"]} for p in extracted])
             st.dataframe(df_sm, use_container_width=True)
             combined_sm = "\n\n" + "="*50 + "\n\n".join([f"TITLE: {p['Title']}\nURL: {p['URL']}\n\n{p['Full Text']}" for p in extracted])
-            st.download_button("⬇️ Download Sitemap Harvest (.txt)", data=combined_sm, file_name="sitemap_harvest.txt", mime="text/plain")
+            st.download_button("Download Sitemap Harvest (.txt)", data=combined_sm, file_name="sitemap_harvest.txt", mime="text/plain")
         else:
             st.warning("No valid sitemap.xml found on this domain.")
 
@@ -229,12 +228,12 @@ if "executed_result" in st.session_state:
         with m2: st.markdown(f'<div class="metric-card"><div class="metric-val">{res_data.get("elapsed_ms", 0)} ms</div><div class="metric-lbl">Duration</div></div>', unsafe_allow_html=True)
 
         if endpoints:
-            st.subheader("📡 Captured Background JSON Endpoints")
+            st.subheader("Captured Background JSON Endpoints")
             for idx, ep in enumerate(endpoints[:10]):
                 with st.expander(f"API #{idx+1}: {ep['URL'][:80]}...", expanded=(idx == 0)):
                     st.write(f"**URL:** `{ep['URL']}`")
                     st.json(ep["Raw JSON"])
             all_json = json.dumps([{"url": ep["URL"], "data": ep["Raw JSON"]} for ep in endpoints], indent=2)
-            st.download_button("⬇️ Download All Intercepted JSON (.json)", data=all_json, file_name="captured_apis.json", mime="application/json")
+            st.download_button("Download All Intercepted JSON (.json)", data=all_json, file_name="captured_apis.json", mime="application/json")
         else:
             st.info("No JSON API requests were detected during page load.")
