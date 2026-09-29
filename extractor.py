@@ -4,7 +4,7 @@ import sys
 import time
 import asyncio
 import subprocess
-from typing import Dict, Any, List, Set, Tuple, Optional
+from typing import Dict, Any, List, Set, Tuple
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup, Tag
 
@@ -27,82 +27,7 @@ ensure_playwright_installed()
 
 
 # =====================================================================
-# 1. ADVANCED ANTI-BOT STEALTH INJECTION SCRIPT
-# =====================================================================
-
-STEALTH_JS = """
-(() => {
-    try {
-        // 1. Mask navigator.webdriver
-        Object.defineProperty(navigator, 'webdriver', {
-            get: () => undefined,
-            configurable: true
-        });
-        delete Object.getPrototypeOf(navigator).webdriver;
-
-        // 2. Mock window.chrome runtime
-        if (!window.chrome) {
-            window.chrome = {
-                app: {
-                    isInstalled: false,
-                    InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
-                    RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
-                },
-                runtime: {
-                    OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
-                    OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
-                    PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
-                    PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
-                    RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
-                },
-                csi: function() {},
-                loadTimes: function() {}
-            };
-        }
-
-        // 3. Mock Plugins & MimeTypes
-        const fakePlugins = [
-            { name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
-            { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
-            { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
-            { name: 'Microsoft Edge PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
-            { name: 'WebKit built-in PDF', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }
-        ];
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => fakePlugins,
-            configurable: true
-        });
-
-        // 4. Spoof WebGL Vendor and Renderer
-        const getParameter = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(parameter) {
-            if (parameter === 37445) return 'Google Inc. (Intel)';
-            if (parameter === 37446) return 'ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)';
-            return getParameter.apply(this, arguments);
-        };
-
-        if (window.WebGL2RenderingContext) {
-            const getParameter2 = WebGL2RenderingContext.prototype.getParameter;
-            WebGL2RenderingContext.prototype.getParameter = function(parameter) {
-                if (parameter === 37445) return 'Google Inc. (Intel)';
-                if (parameter === 37446) return 'ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)';
-                return getParameter2.apply(this, arguments);
-            };
-        }
-
-        // 5. Spoof Languages
-        Object.defineProperty(navigator, 'languages', {
-            get: () => ['en-US', 'en'],
-            configurable: true
-        });
-    } catch(e) {}
-})();
-"""
-
-
-# =====================================================================
-# 2. URL NORMALIZATION UTILITIES
+# 1. URL NORMALIZATION UTILITIES
 # =====================================================================
 
 def normalize_url(url: str) -> str:
@@ -116,7 +41,7 @@ def normalize_url(url: str) -> str:
 
 
 # =====================================================================
-# 3. HIERARCHICAL DOM TEXT-DENSITY DISTILLATION (ORDER-PRESERVING)
+# 2. HIERARCHICAL DOM TEXT-DENSITY DISTILLATION (ORDER-PRESERVING)
 # =====================================================================
 
 class DOMTextDensityExtractor:
@@ -280,7 +205,8 @@ class DOMTextDensityExtractor:
     @classmethod
     def distill_clean_content(cls, html: str, raw_markdown: str = "") -> Tuple[str, str, float]:
         """
-        Performs full hierarchical distillation in exact document order.
+        Performs full hierarchical distillation in exact document order:
+        Returns: (ordered_plain_text, ordered_markdown, density_score)
         """
         if not html:
             return "", "", 0.0
@@ -353,13 +279,13 @@ class DOMTextDensityExtractor:
 
 
 # =====================================================================
-# 4. ADAPTIVE HEADLESS GRAPH TRAVERSAL CRAWLER
+# 3. ADAPTIVE HEADLESS GRAPH TRAVERSAL CRAWLER
 # =====================================================================
 
 class AdaptiveHeadlessCrawler:
     """
     Implements Adaptive Headless Graph Traversal with DOM Text-Density Distillation (AHGT-TDD):
-    - Stealth browser virtualization via DevTools protocol context.
+    - Headless browser virtualization via Crawl4AI AsyncWebCrawler.
     - Container-safe sandbox flags for cloud deployment (Streamlit Cloud, Docker).
     - Dynamic DOM mutation settlement for modern client-side SPAs.
     - Asynchronous Breadth-First Priority Queue with intra-domain URL hashing.
@@ -402,7 +328,6 @@ class AdaptiveHeadlessCrawler:
             page_timeout=30000,
             wait_until="domcontentloaded",
             delay_before_return_html=1.5,
-            js_code=STEALTH_JS,
         )
 
         semaphore = asyncio.Semaphore(concurrency)
